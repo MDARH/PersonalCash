@@ -2,11 +2,16 @@
 
 namespace App\Filament\Resources;
 
+use App\Enums\TransactionType;
 use App\Filament\Resources\TransactionResource\Pages;
 use App\Filament\Resources\TransactionResource\RelationManagers;
-use App\Models\Customer;
+use App\Models\Contact;
 use App\Models\Transaction;
 use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -31,72 +36,66 @@ class TransactionResource extends Resource
     {
         return $form
             ->schema([
-                Select::make('customer_id')
-                    ->label('Customer Info')
-                    ->required()
-                    ->relationship(
-                        name: 'customer',
-                        titleAttribute: 'name',
-                    )
-                    ->getOptionLabelFromRecordUsing(fn (Customer $record) => "{$record->name} - {$record->mobile}")
-                    ->searchable(['name', 'mobile']),
-
-                // Select::make('customer_id')->relationship('customer', 'name'),
-                Textarea::make('description')->columnSpan(2),
-                TextInput::make('amount')
-                    ->required()
-                    ->reactive(),
-                Select::make('transaction_type')
-                    ->required()
-                    ->reactive()
-                    ->afterStateUpdated(function (Get $get, Set $set, $state) {
-                        $new_amount = (int) $get('amount');
-                        $transactionType = $get('transaction_type');
-                        $currentBalance = Transaction::latest('id')->first();
-                        $checkCurrentBalanceIsNotEmpty = (empty($currentBalance->balance)) ? 0 : $currentBalance->balance;
-
-                        // Due & Payable
-                        $checkCustomerByID = $get('customer_id');
-                        $lastDue = Transaction::where('customer_id', $checkCustomerByID)
-                            ->orderBy('created_at', 'desc')
-                            ->value('current_due');
-                        $lastPayable = Transaction::where('customer_id', $checkCustomerByID)
-                            ->orderBy('created_at', 'desc')
-                            ->value('payable');
-
-                        if ($transactionType === 'debit') {
-                            $set('balance', (int) $checkCurrentBalanceIsNotEmpty - $new_amount);
-
-                            $current_due = $lastDue + $new_amount;
-                            $set('current_due', $current_due);
-
-                            $payable = $lastPayable - $new_amount;
-                            if ($payable < 0) {
-                                $set('payable', 0);
-                            } else {
-                                $set('payable', $payable);
-                            }
-                        } else {
-                            $set('balance', (int) $checkCurrentBalanceIsNotEmpty +  $new_amount);
-
-                            $current_due = $lastDue - $new_amount;
-                            if ($current_due < 0) {
-                                $set('current_due', 0);
-                            } else {
-                                $set('current_due', $current_due);
-                            }
-                            $set('payable', $lastPayable + $new_amount);
-                        }
-                    })
-                    ->options([
-                        'debit' => 'Debit',
-                        'credit' => 'Credit',
+                Grid::make(5)
+                    ->schema([
+                        Section::make('Transaction Details')
+                            ->columnSpan(3)
+                            ->schema([
+                                Select::make('contact_id')
+                                    ->relationship('contact', 'name')
+                                    ->required()
+                                    ->searchable()
+                                    ->createOptionForm([
+                                        Grid::make(2)
+                                            ->schema([
+                                                TextInput::make('name')
+                                                    ->required()
+                                                    ->maxLength(255),
+                                                Select::make('type')
+                                                    ->options([
+                                                        'individual' => 'Individual',
+                                                        'shop' => 'Shop',
+                                                        'business' => 'Business',
+                                                    ])
+                                                    ->default('individual'),
+                                                TextInput::make('phone')
+                                                    ->tel()
+                                                    ->maxLength(255)
+                                                    ->regex('/^\+?[0-9\s\(\)\-\.]+$/'),
+                                                TextInput::make('email')
+                                                    ->email()
+                                                    ->maxLength(255),
+                                                Textarea::make('address')
+                                                    ->maxLength(65535)
+                                                    ->columnSpanFull(),
+                                                Textarea::make('notes')
+                                                    ->maxLength(65535)
+                                                    ->columnSpanFull(),
+                                            ]),
+                                    ])
+                                    ->preload(),
+                                Select::make('type')
+                                    ->options([
+                                        'income' => 'Income',
+                                        'expense' => 'Expense',
+                                        'loan_given' => 'Loan Given',
+                                        'loan_taken' => 'Loan Taken',
+                                        'payment' => 'Payment',
+                                    ])->required(),
+                                TextInput::make('amount')->numeric()->required(),
+                            ]),
+                        Section::make('Description')
+                            ->columnSpan(2)
+                            ->schema([
+                                Textarea::make('reason')
+                                    ->label('Description')
+                                    ->nullable(),
+                                DateTimePicker::make('date')
+                                    ->default(Today())
+                                    ->displayFormat('j M, Y h:i A')
+                                    ->required(),
+                            ]),
                     ]),
-
-                TextInput::make('balance')
-                    ->label('New Balance'),
-                TextInput::make('current_due')->default(0),
-                TextInput::make('payable')->default(0)
             ]);
     }
 
@@ -104,17 +103,19 @@ class TransactionResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('customer.name')->label('Transaction By')->searchable(),
-                TextColumn::make('created_at')->label('Date')->date(),
-                TextColumn::make('debit')
-                    ->label('Debit')
-                    ->state(fn (Transaction $record) => ($record->transaction_type == 'debit') ? "{$record->amount}" : '-'),
-                TextColumn::make('credit')
-                    ->label('Credit')
-                    ->state(fn (Transaction $record) => ($record->transaction_type == 'credit') ? "{$record->amount}" : '-'),
-                TextColumn::make('balance'),
-                TextColumn::make('current_due')
-                    ->label('Due'),
+                TextColumn::make('date')->dateTime('j M, Y h:i A'),
+                TextColumn::make('contact.name')->label('Contact'),
+                TextColumn::make('type')
+                    ->badge()
+                    ->color(fn(string $state): string => TransactionType::from($state)->getColor())
+                    ->formatStateUsing(fn(string $state): string => TransactionType::from($state)->getLabel())
+                    ->sortable(),
+                TextColumn::make('reason')
+                    ->label('Description'),
+                TextColumn::make('amount')
+                    ->numeric()
+                    ->prefix('৳ ')
+                    ->label('Amount'),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([

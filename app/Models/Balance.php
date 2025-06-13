@@ -11,16 +11,16 @@ class Balance extends Model
     use HasFactory;
 
     protected $fillable = [
-        'customer_id',
+        'contact_id',
         'description',
         'transaction_type',
         'amount',
         'balance',
     ];
 
-    public function customer(): BelongsTo
+    public function contact(): BelongsTo
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Contact::class);
     }
     public function debit(): BelongsTo
     {

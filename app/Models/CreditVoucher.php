@@ -10,13 +10,13 @@ class CreditVoucher extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'customer_id',
+        'contact_id',
         'description',
         'amount'
     ];
 
-    public function customer(): BelongsTo
+    public function contact(): BelongsTo
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Contact::class);
     }
 }
