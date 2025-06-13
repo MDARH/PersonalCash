@@ -8,6 +8,7 @@ use App\Filament\Resources\TransactionResource\RelationManagers;
 use App\Models\Contact;
 use App\Models\Transaction;
 use Filament\Forms;
+use Illuminate\Support\Str;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Grid;
@@ -75,13 +76,8 @@ class TransactionResource extends Resource
                                     ])
                                     ->preload(),
                                 Select::make('type')
-                                    ->options([
-                                        'income' => 'Income',
-                                        'expense' => 'Expense',
-                                        'loan_given' => 'Loan Given',
-                                        'loan_taken' => 'Loan Taken',
-                                        'payment' => 'Payment',
-                                    ])->required(),
+                                    ->options(collect(TransactionType::cases())->mapWithKeys(fn($type) => [$type->value => $type->getLabel()]))
+                                    ->required(),
                                 TextInput::make('amount')->numeric()->required(),
                             ]),
                         Section::make('Description')
@@ -103,15 +99,16 @@ class TransactionResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('date')->dateTime('j M, Y h:i A'),
+                TextColumn::make('date')
+                    ->label('লেনদেন বিবরণ')
+                    ->description(fn(Transaction $record): string => Str::limit($record->reason, 30))
+                    ->tooltip(fn(Transaction $record): string => $record->reason),
                 TextColumn::make('contact.name')->label('Contact'),
                 TextColumn::make('type')
                     ->badge()
                     ->color(fn(string $state): string => TransactionType::from($state)->getColor())
                     ->formatStateUsing(fn(string $state): string => TransactionType::from($state)->getLabel())
                     ->sortable(),
-                TextColumn::make('reason')
-                    ->label('Description'),
                 TextColumn::make('amount')
                     ->numeric()
                     ->prefix('৳ ')
