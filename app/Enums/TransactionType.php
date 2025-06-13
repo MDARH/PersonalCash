@@ -13,11 +13,11 @@ enum TransactionType: string
     public function getLabel(): string
     {
         return match ($this) {
-            self::Income => 'Income',
-            self::Expense => 'Expense',
+            self::Income => 'ইনকাম',
+            self::Expense => 'খরচ',
             self::LoanGiven => 'দিলাম',
             self::LoanTaken => 'পেলাম',
-            self::Payment => 'Payment',
+            self::Payment => 'বেতন',
         };
     }
 
