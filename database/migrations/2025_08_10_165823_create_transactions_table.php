@@ -17,7 +17,7 @@ return new class extends Migration
             $table->enum('type', ['income', 'expense', 'loan_given', 'loan_taken', 'payment', 'purchase', 'other']);
             $table->decimal('amount', 10, 2);
             $table->string('reason')->nullable();
-            $table->date('date')->default(now());
+            $table->datetime('date')->default(now());
             $table->timestamps();
         });
     }

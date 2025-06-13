@@ -38,9 +38,13 @@ class ContactResource extends Resource
                                 'individual' => 'Individual',
                                 'shop' => 'Shop',
                                 'business' => 'Business',
-                            ]),
-                        TextInput::make('phone'),
+                            ])
+                            ->default('individual'),
+                        TextInput::make('phone')
+                            ->tel()
+                            ->regex('/^\+?[0-9\s\(\)\-\.]+$/'),
                         TextInput::make('email')->email(),
+                        Textarea::make('address'),
                         Textarea::make('notes'),
                     ])
                     ->columns(2)
@@ -51,10 +55,10 @@ class ContactResource extends Resource
                     ->schema([
                         Placeholder::make('created_at')
                             ->label('Created at')
-                            ->content(fn(Contact $record): ?string => $record->created_at?->diffForHumans()),
+                            ->content(fn(Contact $record): ?string => $record->created_at?->format('j M, Y h:i A')),
                         Placeholder::make('updated_at')
                             ->label('Last modified at')
-                            ->content(fn(Contact $record): ?string => $record->updated_at?->diffForHumans()),
+                            ->content(fn(Contact $record): ?string => $record->updated_at?->format('j M, Y h:i A')),
                     ])
                     ->columnSpan(['lg' => 1])
                     ->hidden(fn(?Contact $record) => $record === null),
@@ -70,6 +74,11 @@ class ContactResource extends Resource
                 TextColumn::make('type'),
                 TextColumn::make('phone'),
                 TextColumn::make('email'),
+                TextColumn::make('balance')
+                    ->label('Balance (BDT)')
+                    ->getStateUsing(fn($record) => number_format($record->balance, 2))
+                    ->color(fn($state) => $state < 0 ? 'danger' : 'success')
+                    ->sortable(),
             ])
             ->filters([
                 //
@@ -95,6 +104,7 @@ class ContactResource extends Resource
         return [
             'index' => Pages\ListContacts::route('/'),
             'create' => Pages\CreateContact::route('/create'),
+            'view' => Pages\ViewContact::route('/{record}'),
             'edit' => Pages\EditContact::route('/{record}/edit'),
         ];
     }

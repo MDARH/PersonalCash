@@ -10,13 +10,12 @@ class Transaction extends Model
 {
     use HasFactory;
     protected $fillable = [
-        'customer_id',
-        'description',
+        'contact_id',
         'transaction_type',
         'amount',
-        'balance',
-        'current_due',
-        'payable',
+        'reason',
+        'date',
+        'type',
     ];
     public function contact()
     {
