@@ -7,6 +7,7 @@ use App\Filament\Resources\TransactionResource\RelationManagers;
 use App\Models\Customer;
 use App\Models\Transaction;
 use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -31,72 +32,22 @@ class TransactionResource extends Resource
     {
         return $form
             ->schema([
-                Select::make('customer_id')
-                    ->label('Customer Info')
-                    ->required()
-                    ->relationship(
-                        name: 'customer',
-                        titleAttribute: 'name',
-                    )
-                    ->getOptionLabelFromRecordUsing(fn (Customer $record) => "{$record->name} - {$record->mobile}")
-                    ->searchable(['name', 'mobile']),
-
-                // Select::make('customer_id')->relationship('customer', 'name'),
-                Textarea::make('description')->columnSpan(2),
-                TextInput::make('amount')
-                    ->required()
-                    ->reactive(),
-                Select::make('transaction_type')
-                    ->required()
-                    ->reactive()
-                    ->afterStateUpdated(function (Get $get, Set $set, $state) {
-                        $new_amount = (int) $get('amount');
-                        $transactionType = $get('transaction_type');
-                        $currentBalance = Transaction::latest('id')->first();
-                        $checkCurrentBalanceIsNotEmpty = (empty($currentBalance->balance)) ? 0 : $currentBalance->balance;
-
-                        // Due & Payable
-                        $checkCustomerByID = $get('customer_id');
-                        $lastDue = Transaction::where('customer_id', $checkCustomerByID)
-                            ->orderBy('created_at', 'desc')
-                            ->value('current_due');
-                        $lastPayable = Transaction::where('customer_id', $checkCustomerByID)
-                            ->orderBy('created_at', 'desc')
-                            ->value('payable');
-
-                        if ($transactionType === 'debit') {
-                            $set('balance', (int) $checkCurrentBalanceIsNotEmpty - $new_amount);
-
-                            $current_due = $lastDue + $new_amount;
-                            $set('current_due', $current_due);
-
-                            $payable = $lastPayable - $new_amount;
-                            if ($payable < 0) {
-                                $set('payable', 0);
-                            } else {
-                                $set('payable', $payable);
-                            }
-                        } else {
-                            $set('balance', (int) $checkCurrentBalanceIsNotEmpty +  $new_amount);
-
-                            $current_due = $lastDue - $new_amount;
-                            if ($current_due < 0) {
-                                $set('current_due', 0);
-                            } else {
-                                $set('current_due', $current_due);
-                            }
-                            $set('payable', $lastPayable + $new_amount);
-                        }
-                    })
+                Select::make('contact_id')
+                    ->relationship('contact', 'name')
+                    ->required(),
+                Select::make('type')
                     ->options([
-                        'debit' => 'Debit',
-                        'credit' => 'Credit',
-                    ]),
-
-                TextInput::make('balance')
-                    ->label('New Balance'),
-                TextInput::make('current_due')->default(0),
-                TextInput::make('payable')->default(0)
+                        'income' => 'Income',
+                        'expense' => 'Expense',
+                        'loan_given' => 'Loan Given',
+                        'loan_taken' => 'Loan Taken',
+                        'payment' => 'Payment',
+                        'purchase' => 'Purchase',
+                        'other' => 'Other',
+                    ])->required(),
+                TextInput::make('amount')->numeric()->required(),
+                TextInput::make('reason'),
+                DatePicker::make('date')->required(),
             ]);
     }
 
@@ -104,17 +55,11 @@ class TransactionResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('customer.name')->label('Transaction By')->searchable(),
-                TextColumn::make('created_at')->label('Date')->date(),
-                TextColumn::make('debit')
-                    ->label('Debit')
-                    ->state(fn (Transaction $record) => ($record->transaction_type == 'debit') ? "{$record->amount}" : '-'),
-                TextColumn::make('credit')
-                    ->label('Credit')
-                    ->state(fn (Transaction $record) => ($record->transaction_type == 'credit') ? "{$record->amount}" : '-'),
-                TextColumn::make('balance'),
-                TextColumn::make('current_due')
-                    ->label('Due'),
+                TextColumn::make('contact.name')->label('Contact'),
+                TextColumn::make('type'),
+                TextColumn::make('amount')->money('BDT'),
+                TextColumn::make('reason'),
+                TextColumn::make('date')->date(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([

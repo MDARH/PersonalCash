@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
-            $table->string('customer_id');
-            $table->text('description')->nullable();
-            $table->string('transaction_type');
-            $table->unsignedInteger('amount')->default(0);
-            $table->unsignedInteger('balance')->default(0);
+            $table->foreignId('contact_id')->constrained()->onDelete('cascade');
+            $table->enum('type', ['income', 'expense', 'loan_given', 'loan_taken', 'payment', 'purchase', 'other']);
+            $table->decimal('amount', 10, 2);
+            $table->string('reason')->nullable();
+            $table->date('date')->default(now());
             $table->timestamps();
         });
     }

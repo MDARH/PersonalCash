@@ -18,9 +18,8 @@ class Transaction extends Model
         'current_due',
         'payable',
     ];
-
-    public function customer(): BelongsTo
+    public function contact()
     {
-        return $this->belongsTo(Customer::class);
+        return $this->belongsTo(Contact::class);
     }
 }

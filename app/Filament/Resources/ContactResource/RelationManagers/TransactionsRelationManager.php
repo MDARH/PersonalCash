@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Resources\CustomerResource\RelationManagers;
+namespace App\Filament\Resources\contactResource\RelationManagers;
 
 use App\Models\Transaction;
 use Filament\Forms;
@@ -22,28 +22,26 @@ use Illuminate\Database\Eloquent\SoftDeletingScope;
 class TransactionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'transactions';
-    protected static ?string $recordTitleAttribute = 'customer.name';
+    protected static ?string $recordTitleAttribute = 'contact.name';
 
     public function form(Form $form): Form
     {
         return $form
-            ->schema([
-
-            ]);
+            ->schema([]);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('customer.name')
+            ->recordTitleAttribute('contact.name')
             ->columns([
                 TextColumn::make('created_at')->label('Date')->date(),
                 TextColumn::make('debit')
                     ->label('Debit')
-                    ->state(fn (Transaction $record) => ($record->transaction_type === 'debit') ? "{$record->amount}" : '-'),
+                    ->state(fn(Transaction $record) => ($record->transaction_type === 'debit') ? "{$record->amount}" : '-'),
                 TextColumn::make('credit')
                     ->label('Credit')
-                    ->state(fn (Transaction $record) => ($record->transaction_type === 'credit') ? "{$record->amount}" : '-'),
+                    ->state(fn(Transaction $record) => ($record->transaction_type === 'credit') ? "{$record->amount}" : '-'),
                 TextColumn::make('current_due')->label('Current Due'),
                 TextColumn::make('payable'),
 
