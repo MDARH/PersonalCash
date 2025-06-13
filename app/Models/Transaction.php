@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Transaction extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'contact_id',
         'transaction_type',
@@ -22,7 +23,20 @@ class Transaction extends Model
         'date' => 'datetime',
     ];
 
-    public function contact()
+    public static function boot()
+    {
+        parent::boot();
+
+        static::saved(function ($transaction) {
+            $transaction->contact->updateBalance();
+        });
+
+        static::deleted(function ($transaction) {
+            $transaction->contact->updateBalance();
+        });
+    }
+
+    public function contact(): BelongsTo
     {
         return $this->belongsTo(Contact::class);
     }
