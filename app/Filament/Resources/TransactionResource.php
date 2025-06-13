@@ -115,7 +115,29 @@ class TransactionResource extends Resource
                     ->label('Amount'),
                 TextColumn::make('balance')
                     ->label('Balance')
-                    ->getStateUsing(fn($record) => number_format($record->balance, 2))
+                    ->getStateUsing(function (Transaction $record) {
+                        $allTransactions = Transaction::query()
+                            ->where(function ($query) use ($record) {
+                                $query->where('created_at', '<', $record->created_at)
+                                      ->orWhere(function ($query) use ($record) {
+                                          $query->where('created_at', $record->created_at)
+                                                ->where('id', '<=', $record->id);
+                                      });
+                            })
+                            ->orderBy('created_at')
+                            ->orderBy('id')
+                            ->get();
+
+                        $currentBalance = 0;
+                        foreach ($allTransactions as $transaction) {
+                            if (in_array($transaction->type, ['income', 'loan_taken', 'payment'])) {
+                                $currentBalance += $transaction->amount;
+                            } elseif (in_array($transaction->type, ['expense', 'loan_given'])) {
+                                $currentBalance -= $transaction->amount;
+                            }
+                        }
+                        return number_format($currentBalance, 2);
+                    })
                     ->color(fn($state) => $state < 0 ? 'danger' : 'success')
                     ->sortable(),
             ])

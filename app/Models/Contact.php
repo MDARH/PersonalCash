@@ -30,4 +30,10 @@ class Contact extends Model
 
         return $income - $expense; // পজিটিভ মান মানে সে আমাকে বাকি আছে, নেগেটিভ মান মানে আমি তার কাছে বাকি
     }
+
+    public function updateBalance(): void
+    {
+        $this->balance = $this->getBalanceAttribute();
+        $this->save();
+    }
 }
