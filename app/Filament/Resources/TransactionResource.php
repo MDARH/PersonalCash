@@ -116,6 +116,11 @@ class TransactionResource extends Resource
                     ->numeric()
                     ->prefix('৳ ')
                     ->label('Amount'),
+                TextColumn::make('balance')
+                    ->label('Balance')
+                    ->getStateUsing(fn($record) => number_format($record->balance, 2))
+                    ->color(fn($state) => $state < 0 ? 'danger' : 'success')
+                    ->sortable(),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
