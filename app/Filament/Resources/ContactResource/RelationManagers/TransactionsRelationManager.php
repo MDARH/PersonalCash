@@ -17,6 +17,7 @@ use Filament\Tables;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -98,7 +99,10 @@ class TransactionsRelationManager extends RelationManager
                     }),
             ])->defaultSort('created_at', 'desc')
             ->filters([
-                //
+                SelectFilter::make('type')
+                    ->label('Transaction Type')
+                    ->options(collect(TransactionType::cases())->mapWithKeys(fn($type) => [$type->value => $type->getLabel()]))
+                    ->multiple()
             ])
             ->headerActions([
                 Tables\Actions\CreateAction::make()
