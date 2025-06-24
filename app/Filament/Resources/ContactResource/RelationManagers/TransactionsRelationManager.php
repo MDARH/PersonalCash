@@ -17,26 +17,146 @@ use Filament\Tables;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\Summarizers\Summarizer;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+
+use function Livewire\on;
 
 class TransactionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'transactions';
     protected static ?string $recordTitleAttribute = 'contact.name';
 
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
     public function form(Form $form): Form
     {
         return $form->schema([
             Select::make('type')
                 ->enum(TransactionType::class)
-                ->options(TransactionType::class)
+                ->options(collect(TransactionType::cases())->mapWithKeys(fn($type) => [$type->value => $type->getLabel()]))
                 ->required(),
-            TextInput::make('amount')->numeric()->required(),
-            Textarea::make('reason')->label('Description')->nullable(),
+            TextInput::make('amount')
+                ->required()
+                ->afterStateUpdated(function ($state, callable $set) {
+                    // Skip if empty or already a number without operators
+                    if (empty($state) || is_numeric($state)) {
+                        return;
+                    }
+
+                    // Check if the input contains any arithmetic operators
+                    if (preg_match('/[\+\-\*\/]/', $state)) {
+                        try {
+                            // Remove any non-numeric, non-operator characters for security
+                            $sanitized = preg_replace('/[^0-9\+\-\*\/\.]/', '', $state);
+
+                            // Use eval() to calculate the expression (with safety checks)
+                            if ($sanitized === $state) { // Only proceed if sanitization didn't change anything
+                                $result = eval('return ' . $sanitized . ';');
+                                if (is_numeric($result)) {
+                                    $set('amount', $result);
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            // If there's an error in evaluation, keep the original input
+                            // This allows users to continue typing their expression
+                        }
+                    }
+                })
+                ->live(onBlur: true)
+                ->dehydrateStateUsing(fn($state) => is_numeric($state) ? $state : null),
+            Textarea::make('reason')
+                ->label('Description')
+                ->nullable()
+                ->rows(3)
+                ->placeholder('Enter transaction details here...')
+                ->helperText('Click on a tag below to add it to your description')
+                ->afterStateUpdated(function (string $operation, $state, Set $set) {
+                    if ($operation !== 'create' && $operation !== 'edit') {
+                        return;
+                    }
+                    
+                    // We'll use this to trigger the reactive tag suggestions
+                    $set('reason_search', $state);
+                })
+                ->reactive(),
+                
+            Forms\Components\Hidden::make('reason_search')
+                ->reactive(),
+                
+            Forms\Components\View::make('filament.forms.components.reason-tags')
+                ->viewData(function (Get $get) {
+                    // Common predefined tags
+                    $allTags = [
+                        'Mobile Recharge',
+                        'Electricity Bill',
+                        'Water Bill',
+                        'Gas Bill',
+                        'Internet Bill',
+                        'Rent',
+                        'Salary',
+                        'Grocery',
+                        'Transport',
+                        'Medical',
+                        'Education',
+                        'Entertainment',
+                        'Shopping',
+                        'Food',
+                        'Travel',
+                        'Loan',
+                        'Investment',
+                        'Savings',
+                        'Gift',
+                        'Donation',
+                        'Other'
+                    ];
+                    
+                    // Get recent reasons from this contact's transactions
+                    if ($this->getOwnerRecord()) {
+                        $recentTransactions = $this->getOwnerRecord()
+                            ->transactions()
+                            ->whereNotNull('reason')
+                            ->orderBy('created_at', 'desc')
+                            ->limit(10)
+                            ->get();
+                            
+                        foreach ($recentTransactions as $transaction) {
+                            if (!empty($transaction->reason) && !in_array($transaction->reason, $allTags)) {
+                                $allTags[] = $transaction->reason;
+                            }
+                        }
+                    }
+                    
+                    // Filter tags based on what's typed in the reason field
+                    $reasonSearch = $get('reason_search') ?? '';
+                    $filteredTags = [];
+                    
+                    if (!empty($reasonSearch)) {
+                        foreach ($allTags as $tag) {
+                            if (stripos($tag, $reasonSearch) !== false) {
+                                $filteredTags[] = $tag;
+                            }
+                        }
+                        // Limit to 10 tags
+                        $filteredTags = array_slice($filteredTags, 0, 10);
+                    } else {
+                        // Show most common tags if no search
+                        $filteredTags = array_slice($allTags, 0, 10);
+                    }
+                    
+                    return [
+                        'tags' => $filteredTags,
+                        'livewire' => $this,
+                    ];
+                }),
             DateTimePicker::make('date')
                 ->displayFormat('j M, Y h:i A')
+                ->default(Now())
                 ->required(),
         ]);
     }
@@ -97,12 +217,25 @@ class TransactionsRelationManager extends RelationManager
                     }),
             ])->defaultSort('created_at', 'desc')
             ->filters([
-                //
+                SelectFilter::make('type')
+                    ->label('Transaction Type')
+                    ->options(collect(TransactionType::cases())->mapWithKeys(fn($type) => [$type->value => $type->getLabel()]))
+                    ->multiple()
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()
+                    ->using(function (array $data, string $model): Transaction {
+                        return Transaction::create([
+                            ...$data,
+                            'contact_id' => $this->getOwnerRecord()->id,
+                        ]);
+                    })
+                    ->form(fn(Form $form) => $this->form($form))
+                    ->modalHeading('Create Transaction')
+                    ->visible(fn(): bool => true),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])

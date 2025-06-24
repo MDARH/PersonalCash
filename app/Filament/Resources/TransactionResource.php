@@ -78,7 +78,34 @@ class TransactionResource extends Resource
                                 Select::make('type')
                                     ->options(collect(TransactionType::cases())->mapWithKeys(fn($type) => [$type->value => $type->getLabel()]))
                                     ->required(),
-                                TextInput::make('amount')->numeric()->required(),
+                                TextInput::make('amount')
+                                ->afterStateUpdated(function ($state, callable $set) {
+                                    // Skip if empty or already a number without operators
+                                    if (empty($state) || is_numeric($state)) {
+                                        return;
+                                    }
+
+                                    // Check if the input contains any arithmetic operators
+                                    if (preg_match('/[\+\-\*\/]/', $state)) {
+                                        try {
+                                            // Remove any non-numeric, non-operator characters for security
+                                            $sanitized = preg_replace('/[^0-9\+\-\*\/\.]/', '', $state);
+
+                                            // Use eval() to calculate the expression (with safety checks)
+                                            if ($sanitized === $state) { // Only proceed if sanitization didn't change anything
+                                                $result = eval('return ' . $sanitized . ';');
+                                                if (is_numeric($result)) {
+                                                    $set('amount', $result);
+                                                }
+                                            }
+                                        } catch (\Throwable $e) {
+                                            // If there's an error in evaluation, keep the original input
+                                            // This allows users to continue typing their expression
+                                        }
+                                    }
+                                })
+                                ->live(onBlur: true)
+                                ->dehydrateStateUsing(fn($state) => is_numeric($state) ? $state : null),
                             ]),
                         Section::make('Description')
                             ->columnSpan(2)
@@ -87,8 +114,9 @@ class TransactionResource extends Resource
                                     ->label('Description')
                                     ->nullable(),
                                 DateTimePicker::make('date')
-                                    ->default(Today())
+                                    ->default(now()->setTimezone('Asia/Dhaka'))
                                     ->displayFormat('j M, Y h:i A')
+                                    ->timezone('Asia/Dhaka')
                                     ->required(),
                             ]),
                     ]),
@@ -101,8 +129,9 @@ class TransactionResource extends Resource
             ->columns([
                 TextColumn::make('date')
                     ->label('লেনদেন বিবরণ')
-                    ->description(fn(Transaction $record): string => Str::limit($record->reason, 30))
-                    ->tooltip(fn(Transaction $record): string => $record->reason),
+                    ->dateTime('j M, Y h:i A')
+                    ->description(fn(Transaction $record): string => $record->reason ? Str::limit($record->reason, 30) : '')
+                    ->tooltip(fn(Transaction $record): string => $record->reason ?? ''),
                 TextColumn::make('contact.name')->label('Contact'),
                 TextColumn::make('type')
                     ->badge()
