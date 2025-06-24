@@ -70,70 +70,90 @@ class TransactionsRelationManager extends RelationManager
                 })
                 ->live(onBlur: true)
                 ->dehydrateStateUsing(fn($state) => is_numeric($state) ? $state : null),
-            Forms\Components\Grid::make()
-                ->schema([
-                    Textarea::make('reason')
-                        ->label('Description')
-                        ->nullable()
-                        ->rows(3)
-                        ->placeholder('Enter transaction details here...')
-                        ->helperText('You can use tags below to quickly add common reasons'),
+            Textarea::make('reason')
+                ->label('Description')
+                ->nullable()
+                ->rows(3)
+                ->placeholder('Enter transaction details here...')
+                ->helperText('Click on a tag below to add it to your description')
+                ->afterStateUpdated(function (string $operation, $state, Set $set) {
+                    if ($operation !== 'create' && $operation !== 'edit') {
+                        return;
+                    }
                     
-                    Forms\Components\TagsInput::make('reason_tags')
-                        ->label('Tags')
-                        ->placeholder('Add tags')
-                        ->suggestions([
-                            'Mobile Recharge',
-                            'Electricity Bill',
-                            'Water Bill',
-                            'Gas Bill',
-                            'Internet Bill',
-                            'Rent',
-                            'Salary',
-                            'Grocery',
-                            'Transport',
-                            'Medical',
-                            'Education',
-                            'Entertainment',
-                            'Shopping',
-                            'Food',
-                            'Travel',
-                            'Loan',
-                            'Investment',
-                            'Savings',
-                            'Gift',
-                            'Donation',
-                            'Other'
-                        ])
-                        ->afterStateUpdated(function (string $operation, $state, Set $set, Get $get) {
-                            if ($operation !== 'create' && $operation !== 'edit') {
-                                return;
+                    // We'll use this to trigger the reactive tag suggestions
+                    $set('reason_search', $state);
+                })
+                ->reactive(),
+                
+            Forms\Components\Hidden::make('reason_search')
+                ->reactive(),
+                
+            Forms\Components\View::make('filament.forms.components.reason-tags')
+                ->viewData(function (Get $get) {
+                    // Common predefined tags
+                    $allTags = [
+                        'Mobile Recharge',
+                        'Electricity Bill',
+                        'Water Bill',
+                        'Gas Bill',
+                        'Internet Bill',
+                        'Rent',
+                        'Salary',
+                        'Grocery',
+                        'Transport',
+                        'Medical',
+                        'Education',
+                        'Entertainment',
+                        'Shopping',
+                        'Food',
+                        'Travel',
+                        'Loan',
+                        'Investment',
+                        'Savings',
+                        'Gift',
+                        'Donation',
+                        'Other'
+                    ];
+                    
+                    // Get recent reasons from this contact's transactions
+                    if ($this->getOwnerRecord()) {
+                        $recentTransactions = $this->getOwnerRecord()
+                            ->transactions()
+                            ->whereNotNull('reason')
+                            ->orderBy('created_at', 'desc')
+                            ->limit(10)
+                            ->get();
+                            
+                        foreach ($recentTransactions as $transaction) {
+                            if (!empty($transaction->reason) && !in_array($transaction->reason, $allTags)) {
+                                $allTags[] = $transaction->reason;
                             }
-                            
-                            // Get current reason text
-                            $currentReason = $get('reason') ?? '';
-                            
-                            // Get the last added tag
-                            $tags = $state ?? [];
-                            if (empty($tags)) {
-                                return;
+                        }
+                    }
+                    
+                    // Filter tags based on what's typed in the reason field
+                    $reasonSearch = $get('reason_search') ?? '';
+                    $filteredTags = [];
+                    
+                    if (!empty($reasonSearch)) {
+                        foreach ($allTags as $tag) {
+                            if (stripos($tag, $reasonSearch) !== false) {
+                                $filteredTags[] = $tag;
                             }
-                            
-                            $lastTag = end($tags);
-                            
-                            // Append the tag to the reason text if it's not already there
-                            if (!str_contains($currentReason, $lastTag)) {
-                                if (!empty($currentReason)) {
-                                    $currentReason .= "\n";
-                                }
-                                $currentReason .= $lastTag . ' ';
-                                $set('reason', $currentReason);
-                            }
-                        })
-                        ->saveRelationshipsUsing(null) // Don't save this field to the database
-                        ->dehydrated(false), // Don't include this field when saving the form
-                ])
-                ->columns(1),
+                        }
+                        // Limit to 10 tags
+                        $filteredTags = array_slice($filteredTags, 0, 10);
+                    } else {
+                        // Show most common tags if no search
+                        $filteredTags = array_slice($allTags, 0, 10);
+                    }
+                    
+                    return [
+                        'tags' => $filteredTags,
+                        'livewire' => $this->getLivewire(),
+                    ];
+                }),
             DateTimePicker::make('date')
                 ->displayFormat('j M, Y h:i A')
                 ->default(Now())
