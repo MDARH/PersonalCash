@@ -73,23 +73,8 @@ class TransactionsRelationManager extends RelationManager
             Textarea::make('reason')
                 ->label('Description')
                 ->nullable()
-                ->datalist([
-                    'Monthly payment',
-                    'Advance payment',
-                    'Product purchase',
-                    'Service charge',
-                    'Loan installment',
-                    'Salary payment',
-                    'Rent payment',
-                    'Utility bill',
-                    'Transportation cost',
-                    'Maintenance fee',
-                    'Consultation fee',
-                    'Commission payment',
-                    'Refund',
-                    'Deposit',
-                    'Withdrawal',
-                ])
+                ->hint('Common reasons: Monthly payment, Advance payment, Product purchase, Service charge, Loan installment')
+                ->hintIcon('heroicon-m-information-circle')
                 ->afterStateHydrated(function (Textarea $component, $state) {
                     // If no reason is provided, suggest the most recent reason for this contact
                     if (empty($state) && $this->getOwnerRecord()) {
