@@ -70,52 +70,70 @@ class TransactionsRelationManager extends RelationManager
                 })
                 ->live(onBlur: true)
                 ->dehydrateStateUsing(fn($state) => is_numeric($state) ? $state : null),
-            Select::make('reason')
-                ->label('Description')
-                ->nullable()
-                ->searchable()
-                ->allowHtml()
-                ->options(function () {
-                    // Common predefined reasons
-                    $commonReasons = [
-                        'Monthly payment' => 'Monthly payment',
-                        'Advance payment' => 'Advance payment',
-                        'Product purchase' => 'Product purchase',
-                        'Service charge' => 'Service charge',
-                        'Loan installment' => 'Loan installment',
-                        'Salary payment' => 'Salary payment',
-                        'Rent payment' => 'Rent payment',
-                        'Utility bill' => 'Utility bill',
-                    ];
+            Forms\Components\Grid::make()
+                ->schema([
+                    Textarea::make('reason')
+                        ->label('Description')
+                        ->nullable()
+                        ->rows(3)
+                        ->placeholder('Enter transaction details here...')
+                        ->helperText('You can use tags below to quickly add common reasons'),
                     
-                    // Get recent reasons from this contact's transactions
-                    $recentReasons = [];
-                    if ($this->getOwnerRecord()) {
-                        $recentTransactions = $this->getOwnerRecord()
-                            ->transactions()
-                            ->whereNotNull('reason')
-                            ->orderBy('created_at', 'desc')
-                            ->limit(5)
-                            ->get();
-                            
-                        foreach ($recentTransactions as $transaction) {
-                            if (!empty($transaction->reason) && !isset($commonReasons[$transaction->reason])) {
-                                $recentReasons[$transaction->reason] = '<strong>Recent:</strong> ' . $transaction->reason;
+                    Forms\Components\TagsInput::make('reason_tags')
+                        ->label('Tags')
+                        ->placeholder('Add tags')
+                        ->suggestions([
+                            'Mobile Recharge',
+                            'Electricity Bill',
+                            'Water Bill',
+                            'Gas Bill',
+                            'Internet Bill',
+                            'Rent',
+                            'Salary',
+                            'Grocery',
+                            'Transport',
+                            'Medical',
+                            'Education',
+                            'Entertainment',
+                            'Shopping',
+                            'Food',
+                            'Travel',
+                            'Loan',
+                            'Investment',
+                            'Savings',
+                            'Gift',
+                            'Donation',
+                            'Other'
+                        ])
+                        ->afterStateUpdated(function (string $operation, $state, Set $set, Get $get) {
+                            if ($operation !== 'create' && $operation !== 'edit') {
+                                return;
                             }
-                        }
-                    }
-                    
-                    // Combine both arrays with recent reasons first
-                    return $recentReasons + $commonReasons;
-                })
-                ->createOptionForm([
-                    TextInput::make('reason')
-                        ->label('Custom Reason')
-                        ->required()
+                            
+                            // Get current reason text
+                            $currentReason = $get('reason') ?? '';
+                            
+                            // Get the last added tag
+                            $tags = $state ?? [];
+                            if (empty($tags)) {
+                                return;
+                            }
+                            
+                            $lastTag = end($tags);
+                            
+                            // Append the tag to the reason text if it's not already there
+                            if (!str_contains($currentReason, $lastTag)) {
+                                if (!empty($currentReason)) {
+                                    $currentReason .= "\n";
+                                }
+                                $currentReason .= $lastTag . ' ';
+                                $set('reason', $currentReason);
+                            }
+                        })
+                        ->saveRelationshipsUsing(null) // Don't save this field to the database
+                        ->dehydrated(false), // Don't include this field when saving the form
                 ])
-                ->createOptionUsing(function (array $data) {
-                    return $data['reason'];
-                }),
+                ->columns(1),
             DateTimePicker::make('date')
                 ->displayFormat('j M, Y h:i A')
                 ->default(Now())
