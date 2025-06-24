@@ -22,6 +22,8 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
+use function Livewire\on;
+
 class TransactionsRelationManager extends RelationManager
 {
     protected static string $relationship = 'transactions';
@@ -46,13 +48,13 @@ class TransactionsRelationManager extends RelationManager
                     if (empty($state) || is_numeric($state)) {
                         return;
                     }
-                    
+
                     // Check if the input contains any arithmetic operators
                     if (preg_match('/[\+\-\*\/]/', $state)) {
                         try {
                             // Remove any non-numeric, non-operator characters for security
                             $sanitized = preg_replace('/[^0-9\+\-\*\/\.]/', '', $state);
-                            
+
                             // Use eval() to calculate the expression (with safety checks)
                             if ($sanitized === $state) { // Only proceed if sanitization didn't change anything
                                 $result = eval('return ' . $sanitized . ';');
@@ -66,9 +68,42 @@ class TransactionsRelationManager extends RelationManager
                         }
                     }
                 })
-                ->live()
-                ->dehydrateStateUsing(fn ($state) => is_numeric($state) ? $state : null),
-            Textarea::make('reason')->label('Description')->nullable(),
+                ->live(onBlur: true)
+                ->dehydrateStateUsing(fn($state) => is_numeric($state) ? $state : null),
+            Textarea::make('reason')
+                ->label('Description')
+                ->nullable()
+                ->datalist([
+                    'Monthly payment',
+                    'Advance payment',
+                    'Product purchase',
+                    'Service charge',
+                    'Loan installment',
+                    'Salary payment',
+                    'Rent payment',
+                    'Utility bill',
+                    'Transportation cost',
+                    'Maintenance fee',
+                    'Consultation fee',
+                    'Commission payment',
+                    'Refund',
+                    'Deposit',
+                    'Withdrawal',
+                ])
+                ->afterStateHydrated(function (Textarea $component, $state) {
+                    // If no reason is provided, suggest the most recent reason for this contact
+                    if (empty($state) && $this->getOwnerRecord()) {
+                        $latestTransaction = $this->getOwnerRecord()
+                            ->transactions()
+                            ->whereNotNull('reason')
+                            ->latest()
+                            ->first();
+                            
+                        if ($latestTransaction) {
+                            $component->state($latestTransaction->reason);
+                        }
+                    }
+                }),
             DateTimePicker::make('date')
                 ->displayFormat('j M, Y h:i A')
                 ->default(Now())
