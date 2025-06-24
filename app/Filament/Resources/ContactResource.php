@@ -59,6 +59,13 @@ class ContactResource extends Resource
                         Placeholder::make('updated_at')
                             ->label('Last modified at')
                             ->content(fn(Contact $record): ?string => $record->updated_at?->format('j M, Y h:i A')),
+                        Placeholder::make('balance')
+                            ->label('Current Due Amount')
+                            ->content(fn(Contact $record): string => '৳ ' . number_format($record->balance, 2))
+                            ->extraAttributes(fn(Contact $record) => [
+                                'class' => $record->balance < 0 ? 'text-danger-500' : 'text-success-500',
+                                'style' => 'font-weight: bold;',
+                            ]),
                     ])
                     ->columnSpan(['lg' => 1])
                     ->hidden(fn(?Contact $record) => $record === null),

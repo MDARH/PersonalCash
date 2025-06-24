@@ -31,12 +31,13 @@ class TransactionsRelationManager extends RelationManager
         return $form->schema([
             Select::make('type')
                 ->enum(TransactionType::class)
-                ->options(TransactionType::class)
+                ->options(collect(TransactionType::cases())->mapWithKeys(fn($type) => [$type->value => $type->getLabel()]))
                 ->required(),
             TextInput::make('amount')->numeric()->required(),
             Textarea::make('reason')->label('Description')->nullable(),
             DateTimePicker::make('date')
                 ->displayFormat('j M, Y h:i A')
+                ->default(Now())
                 ->required(),
         ]);
     }
@@ -100,9 +101,19 @@ class TransactionsRelationManager extends RelationManager
                 //
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()
+                    ->using(function (array $data, string $model): Transaction {
+                        return Transaction::create([
+                            ...$data,
+                            'contact_id' => $this->getOwnerRecord()->id,
+                        ]);
+                    })
+                    ->form(fn(Form $form) => $this->form($form))
+                    ->modalHeading('Create Transaction')
+                    ->visible(fn(): bool => true),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
