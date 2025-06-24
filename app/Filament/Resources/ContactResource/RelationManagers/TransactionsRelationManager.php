@@ -151,7 +151,7 @@ class TransactionsRelationManager extends RelationManager
                     
                     return [
                         'tags' => $filteredTags,
-                        'livewire' => $this->getLivewire(),
+                        'livewire' => $this,
                     ];
                 }),
             DateTimePicker::make('date')
