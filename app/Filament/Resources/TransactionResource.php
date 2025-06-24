@@ -101,8 +101,8 @@ class TransactionResource extends Resource
             ->columns([
                 TextColumn::make('date')
                     ->label('লেনদেন বিবরণ')
-                    ->description(fn(Transaction $record): string => Str::limit($record->reason, 30))
-                    ->tooltip(fn(Transaction $record): string => $record->reason),
+                    ->description(fn(Transaction $record): string => $record->reason ? Str::limit($record->reason, 30) : '')
+                    ->tooltip(fn(Transaction $record): string => $record->reason ?? ''),
                 TextColumn::make('contact.name')->label('Contact'),
                 TextColumn::make('type')
                     ->badge()

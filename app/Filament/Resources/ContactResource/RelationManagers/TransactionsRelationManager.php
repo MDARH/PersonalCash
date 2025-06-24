@@ -27,6 +27,11 @@ class TransactionsRelationManager extends RelationManager
     protected static string $relationship = 'transactions';
     protected static ?string $recordTitleAttribute = 'contact.name';
 
+    public function isReadOnly(): bool
+    {
+        return false;
+    }
+
     public function form(Form $form): Form
     {
         return $form->schema([
@@ -34,7 +39,35 @@ class TransactionsRelationManager extends RelationManager
                 ->enum(TransactionType::class)
                 ->options(collect(TransactionType::cases())->mapWithKeys(fn($type) => [$type->value => $type->getLabel()]))
                 ->required(),
-            TextInput::make('amount')->numeric()->required(),
+            TextInput::make('amount')
+                ->required()
+                ->afterStateUpdated(function ($state, callable $set) {
+                    // Skip if empty or already a number without operators
+                    if (empty($state) || is_numeric($state)) {
+                        return;
+                    }
+                    
+                    // Check if the input contains any arithmetic operators
+                    if (preg_match('/[\+\-\*\/]/', $state)) {
+                        try {
+                            // Remove any non-numeric, non-operator characters for security
+                            $sanitized = preg_replace('/[^0-9\+\-\*\/\.]/', '', $state);
+                            
+                            // Use eval() to calculate the expression (with safety checks)
+                            if ($sanitized === $state) { // Only proceed if sanitization didn't change anything
+                                $result = eval('return ' . $sanitized . ';');
+                                if (is_numeric($result)) {
+                                    $set('amount', $result);
+                                }
+                            }
+                        } catch (\Throwable $e) {
+                            // If there's an error in evaluation, keep the original input
+                            // This allows users to continue typing their expression
+                        }
+                    }
+                })
+                ->live()
+                ->dehydrateStateUsing(fn ($state) => is_numeric($state) ? $state : null),
             Textarea::make('reason')->label('Description')->nullable(),
             DateTimePicker::make('date')
                 ->displayFormat('j M, Y h:i A')
