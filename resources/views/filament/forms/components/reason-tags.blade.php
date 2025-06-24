@@ -17,16 +17,41 @@
     @endif
 
     <script>
-        document.addEventListener('tag-clicked', function(event) {
-            const tag = event.detail.tag;
-            const livewireId = '{{ $livewire->getId() }}';
-            const livewireComponent = window.Livewire.find(livewireId);
-            
-            if (livewireComponent) {
-                const currentReason = livewireComponent.get('data.reason') || '';
-                const newReason = currentReason ? currentReason + ' ' + tag : tag;
-                livewireComponent.set('data.reason', newReason);
-            }
+        // Wait for Livewire and Alpine to be fully loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Register the event listener for tag clicks
+            document.addEventListener('tag-clicked', function(event) {
+                const tag = event.detail.tag;
+                
+                // Get the textarea element directly
+                const reasonTextarea = document.querySelector('[name="reason"]');
+                
+                if (reasonTextarea) {
+                    // Get current value
+                    const currentValue = reasonTextarea.value || '';
+                    
+                    // Append the tag
+                    const newValue = currentValue ? currentValue + ' ' + tag : tag;
+                    
+                    // Set the new value
+                    reasonTextarea.value = newValue;
+                    
+                    // Dispatch input event to trigger Livewire update
+                    reasonTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+                    reasonTextarea.dispatchEvent(new Event('change', { bubbles: true }));
+                    
+                    // Focus the textarea
+                    reasonTextarea.focus();
+                    
+                    // Set cursor at the end
+                    const len = reasonTextarea.value.length;
+                    reasonTextarea.setSelectionRange(len, len);
+                    
+                    console.log('Updated textarea with tag:', tag);
+                } else {
+                    console.error('Could not find reason textarea element');
+                }
+            });
         });
     </script>
 </div>
