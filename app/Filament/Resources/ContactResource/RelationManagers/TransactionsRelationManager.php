@@ -70,24 +70,51 @@ class TransactionsRelationManager extends RelationManager
                 })
                 ->live(onBlur: true)
                 ->dehydrateStateUsing(fn($state) => is_numeric($state) ? $state : null),
-            Textarea::make('reason')
+            Select::make('reason')
                 ->label('Description')
                 ->nullable()
-                ->hint('Common reasons: Monthly payment, Advance payment, Product purchase, Service charge, Loan installment')
-                ->hintIcon('heroicon-m-information-circle')
-                ->afterStateHydrated(function (Textarea $component, $state) {
-                    // If no reason is provided, suggest the most recent reason for this contact
-                    if (empty($state) && $this->getOwnerRecord()) {
-                        $latestTransaction = $this->getOwnerRecord()
+                ->searchable()
+                ->allowHtml()
+                ->options(function () {
+                    // Common predefined reasons
+                    $commonReasons = [
+                        'Monthly payment' => 'Monthly payment',
+                        'Advance payment' => 'Advance payment',
+                        'Product purchase' => 'Product purchase',
+                        'Service charge' => 'Service charge',
+                        'Loan installment' => 'Loan installment',
+                        'Salary payment' => 'Salary payment',
+                        'Rent payment' => 'Rent payment',
+                        'Utility bill' => 'Utility bill',
+                    ];
+                    
+                    // Get recent reasons from this contact's transactions
+                    $recentReasons = [];
+                    if ($this->getOwnerRecord()) {
+                        $recentTransactions = $this->getOwnerRecord()
                             ->transactions()
                             ->whereNotNull('reason')
-                            ->latest()
-                            ->first();
+                            ->orderBy('created_at', 'desc')
+                            ->limit(5)
+                            ->get();
                             
-                        if ($latestTransaction) {
-                            $component->state($latestTransaction->reason);
+                        foreach ($recentTransactions as $transaction) {
+                            if (!empty($transaction->reason) && !isset($commonReasons[$transaction->reason])) {
+                                $recentReasons[$transaction->reason] = '<strong>Recent:</strong> ' . $transaction->reason;
+                            }
                         }
                     }
+                    
+                    // Combine both arrays with recent reasons first
+                    return $recentReasons + $commonReasons;
+                })
+                ->createOptionForm([
+                    TextInput::make('reason')
+                        ->label('Custom Reason')
+                        ->required()
+                ])
+                ->createOptionUsing(function (array $data) {
+                    return $data['reason'];
                 }),
             DateTimePicker::make('date')
                 ->displayFormat('j M, Y h:i A')
