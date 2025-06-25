@@ -40,6 +40,7 @@ class AdminPanelProvider extends PanelProvider
             ->widgets([
                 Widgets\AccountWidget::class,
                 \App\Filament\Widgets\TotalLoanTakenWidget::class,
+                \App\Filament\Widgets\TotalLoanGivenWidget::class,
                 \App\Filament\Widgets\DueListOverview::class,
             ])
             ->middleware([
