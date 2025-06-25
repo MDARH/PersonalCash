@@ -29,12 +29,12 @@ class CreateTransactionWidget extends Widget
 
     public ?array $data = [];
     
+    public $form;
+    
     public function mount(): void
     {
         $this->form->fill();
     }
-    
-    public $form;
 
     public function form(Form $form): Form
     {
