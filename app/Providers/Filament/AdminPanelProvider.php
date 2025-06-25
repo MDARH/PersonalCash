@@ -2,6 +2,8 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Widgets\TotalLoanGivenWidget;
+use App\Filament\Widgets\TotalLoanTakenWidget;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
@@ -38,9 +40,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([
-                \App\Filament\Widgets\TotalLoanTakenWidget::class,
-                \App\Filament\Widgets\TotalLoanGivenWidget::class,
-                \App\Filament\Widgets\DueListOverview::class,
+                //
             ])
             ->middleware([
                 EncryptCookies::class,

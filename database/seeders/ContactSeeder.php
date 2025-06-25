@@ -10,13 +10,21 @@ class ContactSeeder extends Seeder
     /**
      * Run the database seeds.
      */
+    /**
+     * Seed the contacts table with 10 random contacts.
+     */
     public function run(): void
     {
-        Contact::create([
-            'name' => 'Test Contact',
-            'type' => 'individual',
-            'phone' => '1234567890',
-            'email' => 'test@contact.com',
-        ]);
+        \App::setLocale('en');
+        $faker = \Faker\Factory::create();
+        $types = ['individual', 'shop', 'business'];
+        for ($i = 1; $i <= 10; $i++) {
+            Contact::create([
+                'name' => $faker->name,
+                'type' => $faker->randomElement($types),
+                'phone' => $faker->phoneNumber,
+                'email' => $faker->unique()->safeEmail,
+            ]);
+        }
     }
 }
