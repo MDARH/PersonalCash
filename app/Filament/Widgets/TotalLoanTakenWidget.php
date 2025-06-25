@@ -13,6 +13,8 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
 class TotalLoanTakenWidget extends BaseWidget
 {
     protected static ?string $pollingInterval = '10s';
+    protected static ?int $sort = 1;
+    protected int | string | array $columnSpan = 1;
     
     protected function getStats(): array
     {
