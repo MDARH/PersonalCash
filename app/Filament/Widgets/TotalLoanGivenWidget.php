@@ -14,7 +14,8 @@ class TotalLoanGivenWidget extends BaseWidget
 {
     protected static ?string $pollingInterval = '10s';
     protected static ?int $sort = 2;
-    protected int | string | array $columnSpan = 1;
+    // Set widget to span 6 columns for a wider layout
+    protected int | string | array $columnSpan = 6;
 
     protected function getStats(): array
     {
