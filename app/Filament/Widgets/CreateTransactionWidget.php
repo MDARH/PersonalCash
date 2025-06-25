@@ -29,10 +29,19 @@ class CreateTransactionWidget extends Widget
 
     public ?array $data = [];
     
-    public $form;
-    
+    /**
+     * The form instance for the widget.
+     *
+     * @var Form|null
+     */
+    protected ?Form $form = null;
+
+    /**
+     * Mount the widget and initialize the form.
+     */
     public function mount(): void
     {
+        $this->form = $this->makeForm();
         $this->form->fill();
     }
 
@@ -90,24 +99,30 @@ class CreateTransactionWidget extends Widget
             ->columns(2);
     }
 
+    /**
+     * Handle the creation of a new transaction.
+     */
     public function create(): void
     {
         $data = $this->form->getState();
-
         $transaction = Transaction::create($data);
-
         $this->form->fill();
-
         Notification::make()
             ->title('লেনদেন সফলভাবে তৈরি করা হয়েছে')
             ->success()
             ->send();
     }
 
+    /**
+     * Define the actions for the form widget.
+     */
     public function getFormActions(): array
     {
         return [
-            //
+            \Filament\Forms\Components\Actions\Action::make('create')
+                ->label('নতুন লেনদেন যোগ করুন')
+                ->action(fn () => $this->create())
+                ->color('primary'),
         ];
     }
 }
