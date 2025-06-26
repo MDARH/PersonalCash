@@ -77,7 +77,7 @@ class ContactResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')->searchable(),
+                TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('type'),
                 TextColumn::make('phone'),
                 TextColumn::make('email'),
@@ -87,6 +87,7 @@ class ContactResource extends Resource
                     ->color(fn($state) => $state < 0 ? 'danger' : 'success')
                     ->sortable(),
             ])
+            ->defaultSort('name', 'asc')
             ->filters([
                 //
             ])

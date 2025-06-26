@@ -11,6 +11,7 @@ use Filament\Tables\Columns\TextColumn;
 class DueListOverview extends BaseWidget
 {
     protected static ?string $heading = 'Due List';
+    protected static ?int $sort = 4;
 
     protected int | string | array $columnSpan = 'full';
 

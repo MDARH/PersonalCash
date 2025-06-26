@@ -10,14 +10,23 @@ class TransactionSeeder extends Seeder
     /**
      * Run the database seeds.
      */
+    /**
+     * Seed the transactions table with 100 random transactions.
+     */
     public function run(): void
     {
-        Transaction::create([
-            'contact_id' => 1, // Assuming a contact with ID 1 exists
-            'type' => 'income',
-            'amount' => 1000,
-            'date' => now(),
-            'reason' => 'Initial credit transaction',
-        ]);
+        \App::setLocale('en');
+        $faker = \Faker\Factory::create();
+        $contactIds = \App\Models\Contact::pluck('id')->toArray();
+        $types = ['income', 'expense', 'loan_given', 'loan_taken'];
+        for ($i = 1; $i <= 100; $i++) {
+            Transaction::create([
+                'contact_id' => $faker->randomElement($contactIds),
+                'type' => $faker->randomElement($types),
+                'amount' => $faker->numberBetween(100, 10000),
+                'date' => $faker->dateTimeBetween('-1 year', 'now'),
+                'reason' => $faker->sentence,
+            ]);
+        }
     }
 }
