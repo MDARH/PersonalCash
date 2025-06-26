@@ -15,7 +15,7 @@ class TotalWidget extends BaseWidget
     protected static ?string $pollingInterval = '10s';
     protected static ?int $sort = 1;
     // Set widget to span 6 columns for a wider layout
-    protected int | string | array $columnSpan = 6;
+    protected int | string | array $columnSpan = 8;
 
     protected function getStats(): array
     {
